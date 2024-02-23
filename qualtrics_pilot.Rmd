@@ -1,0 +1,217 @@
+---
+title: "qualtrics_pilot"
+author: "Zsuzsa Szekely"
+date: "2024-02-23"
+output: html_document
+---
+
+```{r setup, results = 'hide'}
+library(dplyr)
+library(ggplot2)
+library(stringr)
+```
+
+```{r results = 'hide'}
+data <- read.csv('C:/Users/szeke/OneDrive - elte.hu/METASCIENCE LAB/Projects/094_PreregDeviationsQuant/Data/Study1/Source/pilot.csv')
+```
+
+```{r results = 'hide'}
+# Drop the first two rows in the data frame and incomplete responses
+data <- data[-c(1, 2), ] %>% 
+  filter(Progress == 100)
+
+# Count participants
+count(data)
+  
+data %>% 
+  count(scenario_version)
+```
+
+```{r results = 'hide'}
+# Replace -99 values with NA (-99 values stand for seen but unanswered questions)
+data <- data %>%
+  mutate_all(~ ifelse(. == -99, NA, .))
+```
+
+#ANALYSIS
+
+## Demographics
+
+Descriptive analyses will be conducted about the frequency of primary research areas, the scientific career stage, the country of the institution of the participants, and whether they have conducted a preregistered study or not.
+
+```{r results = 'hide'}
+demographics <- data %>% 
+  select(research_area, research_area_5_TEXT, phd_defense, phd_defense_2_TEXT, country, prereg_experience)
+
+# Research area
+## Check responses in the "Else" category
+demographics %>% 
+  count(research_area_5_TEXT)
+
+## If someone chose "Else", put "Else" into the research_area variable
+demographics <- demographics %>% 
+  mutate(research_area = ifelse(!is.na(research_area_5_TEXT) & research_area_5_TEXT != "", "Else", research_area))
+
+## Plot
+ggplot(demographics, aes(x = research_area)) +
+  geom_bar(stat = "count") +
+  labs(title = "Research Areas of Participants",
+       x = "Research Area",
+       y = "Count")
+
+# Career stage
+## Categorization: early career <10 years since PhD, mid-career = 11-20 years since PhD, late-career >20 years since PhD
+demographics <- demographics %>% 
+  mutate(phd_defense_2_TEXT = ifelse(!is.na(phd_defense_2_TEXT), as.numeric(phd_defense_2_TEXT), NA),
+         phd_defense_2_TEXT = ifelse(phd_defense == "I haven't had a PhD defense", 0, years_since_phd),
+         years_since_phd = as.numeric(str_extract(phd_defense_2_TEXT, "\\d+")),
+         career_stage = case_when(
+           years_since_phd < 10 ~ "early-career",
+           years_since_phd >= 10 & years_since_phd < 20 ~ "mid-career",
+           years_since_phd >= 20 ~ "late-career",
+           TRUE ~ NA_character_
+           ))
+
+ggplot(demographics, aes(x = career_stage)) +
+  geom_bar(stat = "count") +
+  labs(title = "Distribution of Career Stages",
+       x = "Career Stage",
+       y = "Count")
+
+# Country
+
+
+# Preregistration experience
+ggplot(demographics, aes(x = prereg_experience)) +
+  geom_bar(stat = "count") +
+  labs(title = "Experience With Preregistration",
+       x = "Having Experience With Preregistration",
+       y = "Count")
+
+```
+
+## Expected consequences
+
+Descriptive analyses (frequency of responses) of questions Q6 and Q8 (please find the questionnaire in the supplemental file) will provide us with information about the expected consequences of deviations (Q6) and their reporting (Q8) on one’s professional reputation.
+
+```{r results = 'hide'}
+expected_consequences <- data %>% 
+  select(prereg_experience, dev_experience, report_experience, dev_reputation_1, report_reputation_1, report_reputation_2, prereg_barriers_1, prereg_barriers_2, prereg_barriers_3, report_consequences_1)
+
+# Experience with deviation from preregistration
+
+
+# Experience with reporting deviations
+
+
+# Reputation: deviation
+
+
+# Reputation: reporting deviation
+
+
+```
+
+Descriptive analyses (frequency of responses) of question Q9 will provide us with information about what holds people back from preregistration.
+
+```{r results = 'hide'}
+# Barriers for preregistration
+
+
+```
+
+A descriptive analysis (frequency of responses) of question Q10/1 will provide us with information about the expected consequences of reporting deviations on the chances of publication.
+
+```{r results = 'hide'}
+# Chances for publication
+
+
+```
+
+## Scenarios
+
+We will analyze four scenarios, assessing both the study's credibility and the researcher's trustworthiness. Our investigation aims to explore whether the fact of preregistering a study affects the assessed credibility and trustworthiness. Similarly, we will examine if the fact of deviating from the original study plan affects credibility and trustworthiness. Additionally, we will investigate potential interactions between the two aforementioned factors (preregistration and deviations) along with the assessed credibility and trustworthiness.
+
+```{r results = 'hide'}
+scenarios <- data %>% 
+  select(scenario_version, assessed_cr_tr_a_1, assessed_cr_tr_a_2, assessed_cr_tr_b_1, assessed_cr_tr_b_2, assessed_cr_tr_c_1, assessed_cr_tr_c_2, assessed_cr_tr_d_1, assessed_cr_tr_d_2, cr_factors_a, cr_factors_a_9_TEXT, cr_factors_b, cr_factors_b_9_TEXT, cr_factors_c, cr_factors_c_9_TEXT, cr_factors_d, cr_factors_d_9_TEXT, tr_factors_a, tr_factors_a_9_TEXT, tr_factors_b, tr_factors_b_9_TEXT, tr_factors_c, tr_factors_c_9_TEXT, tr_factors_d, tr_factors_d_9_TEXT, fishy_c, fishy_d)
+
+# Merge data from A, B, C, D scenarios stored in 4 separate variables into 1 variable per question
+
+
+```
+
+```{r results = 'hide'}
+# Credibility
+
+
+# Trustworthiness
+
+
+# Interaction
+```
+
+Based on the scenario evaluations, we will have information about how people assess credibility and trustworthiness. Besides, we will also have information about the expected credibility and trustworthiness, based on Q10/2 and Q10/3 from the “Expected consequences” block of the questionnaire. By comparing these (assessed and expected) results, we will see if the assessed credibility and trustworthiness are aligned with the expected credibility and trustworthiness. To do this, we will take the expected credibility (Q10/2) results, which can take one of 3 values on a Likert scale: less, equally, or more. The participants' responses will be sorted into 3 groups according to the scale values. Within each group, we will examine how the assessed credibility results turned out: whether the participants considered the scenario with a deviation as less, equally, or more credible than the scenario without a deviation. This way, the expected and assessed credibility results can be compared. We will do the same analysis for the trustworthiness variable (Q10/3).
+
+```{r results = 'hide'}
+# Expected vs. assessed credibility
+
+
+# Expected vs. assessed trustworthiness
+
+
+```
+
+We will examine whether the assessed credibility of the study and the assessed trustworthiness of the author are align with each other. Data from all four scenarios will be pooled for this analysis.
+
+```{r results = 'hide'}
+# Correlation: credibility and trustworthiness
+
+
+```
+
+Descriptive analyses (frequency of responses) of questions Q14 and Q15 will show what factors are mostly considered when assessing credibility and trustworthiness.
+
+```{r results = 'hide'}
+# Credibility factors
+
+
+# Trustworthiness factors
+
+
+```
+
+## Perception of practices
+
+Descriptive analyses will be conducted to examine the distribution of responses to all 3 questions of Q17. These analyses will inform us about how researchers perceive others’ practices regarding deviating from preregistration (Q17/1), reporting discrepancies (Q147/2), and comparing preregistrations to the corresponding papers (Q17/3).
+
+```{r results = 'hide'}
+practices_perception <- data %>% 
+  select(practices_perception_1, practices_perception_2, practices_perception_3)
+```
+
+## Incentives and support
+
+Descriptive analyses will examine the frequency of responses to Q18, Q19, Q20, and Q21.
+
+```{r results = 'hide'}
+incentives <- data %>% 
+  select(requirement, requirement_5_TEXT, guidance, guidance_5_TEXT, norms, training)
+
+# Requirement
+
+
+# Guidance
+
+
+# Norms
+
+
+# Training
+
+
+```
+
+```{r results = 'hide'}
+
+```
