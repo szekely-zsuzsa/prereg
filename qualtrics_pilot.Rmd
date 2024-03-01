@@ -10,6 +10,7 @@ library(dplyr)
 library(ggplot2)
 library(stringr)
 library(tidyr)
+library(forcats)
 ```
 
 ```{r results = 'hide'}
@@ -23,6 +24,10 @@ data <- read.csv('C:/Users/szeke/OneDrive - elte.hu/METASCIENCE LAB/Projects/094
 data <- data[-c(1, 2), ] %>% 
   filter(consent == "Yes") %>% 
   filter(Progress == 100)
+
+# Drop manual responses
+data <- data %>% 
+  filter(Status != "Survey Preview")
 
 # Count participants
 count(data)
@@ -103,8 +108,8 @@ expected_consequences <- data %>%
 # Experience with deviation from preregistration
 expected_consequences %>% 
   filter(prereg_experience == "Yes") %>%
-  filter(dev_experience == "Yes") %>%
-  count()
+  # filter(dev_experience == "Yes") %>%
+  count(dev_experience)
 
 # Experience with reporting deviations
 expected_consequences %>% 
@@ -137,7 +142,7 @@ reputation_report <- expected_consequences %>%
 
 ggplot(reputation_report, aes(x = report_reputation, fill = factor(report_experience))) +
   geom_bar(stat = "count") +
-  scale_fill_manual(values = c("No" = "pink", "Yes" = "skyblue"), name = "Experience with reporting deviations") +
+  scale_fill_manual(values = c("No" = "pink", "Yes" = "skyblue"), name = "Experience with \nreporting deviations") +
   labs(title = "Expected Consequences of Not Reporting Deviations",
        x = "I would be concerned about my professional reputation \n for not reporting discrepancies between my \n preregistration and the final study.",
        y = "Count")
@@ -166,6 +171,9 @@ prereg_barriers <- expected_consequences %>%
                values_to = "prereg_barrier_value")
 
 # Plot
+## Define the custom order of levels
+custom_order <- c("I agree", "I rather agree", "I rather don't agree", "I don't agree", "I don't know")
+
 ## Define custom labels for facets
 custom_labels <- c(
   prereg_barriers_1 = "Preregistration would hold me back from scientific exploration.",
@@ -262,7 +270,7 @@ trustworthiness_plot <- scenarios %>%
 trustworthiness_plot
 ```
 
-Based on the scenario evaluations, we will have information about how people assess credibility and trustworthiness. Besides, we will also have information about the expected credibility and trustworthiness, based on Q10/2 and Q10/3 from the “Expected consequences” block of the questionnaire. By comparing these (assessed and expected) results, we will see if the assessed credibility and trustworthiness are aligned with the expected credibility and trustworthiness. To do this, we will take the expected credibility (Q10/2) results, which can take one of 3 values on a Likert scale: less, equally, or more. The participants' responses will be sorted into 3 groups according to the scale values. Within each group, we will examine how the assessed credibility results turned out: whether the participants considered the scenarios with a deviation as less, equally, or more credible than the scenarios without a deviation. This way, the expected and assessed credibility results can be compared. We will do the same analysis for the trustworthiness variable (Q10/3).
+Based on the scenario evaluations, we will have information about how people assess credibility and trustworthiness. Besides, we will also have information about the expected credibility and trustworthiness, based on Q10/2 and Q10/3 from the "Expected consequences" block of the questionnaire. By comparing these (assessed and expected) results, we will see if the assessed credibility and trustworthiness are aligned with the expected credibility and trustworthiness. To do this, we will take the expected credibility (Q10/2) results, which can take one of 3 values on a Likert scale: less, equally, or more. The participants' responses will be sorted into 3 groups according to the scale values. Within each group, we will examine how the assessed credibility results turned out: whether the participants considered the scenarios with a deviation as less, equally, or more credible than the scenarios without a deviation. This way, the expected and assessed credibility results can be compared. We will do the same analysis for the trustworthiness variable (Q10/3).
 
 ```{r results = 'hide'}
 # Expected vs. assessed credibility
@@ -308,7 +316,7 @@ Descriptive analyses (frequency of responses) of questions Q14 and Q15 will show
 # Credibility factors
 factors_cr <- scenarios %>% 
   separate_rows(cr_factors, sep = ",") %>%
-  mutate(cr_factors = fct_relevel(cr_factors, "other:", "NA", after = Inf)) %>% 
+  mutate(cr_factors = fct_relevel(cr_factors, "other:", after = Inf)) %>% 
   mutate(cr_factors = fct_rev(cr_factors)) %>% 
   mutate(cr_factors = fct_relabel(cr_factors, ~gsub(":", "", .)))
 
@@ -322,7 +330,7 @@ factors_cr %>%
 # Trustworthiness factors
 factors_tr <- scenarios %>% 
   separate_rows(tr_factors, sep = ",") %>%
-  mutate(tr_factors = fct_relevel(tr_factors, "other:", "NA", after = Inf)) %>% 
+  mutate(tr_factors = fct_relevel(tr_factors, "other:", after = Inf)) %>% 
   mutate(tr_factors = fct_rev(tr_factors)) %>% 
   mutate(tr_factors = fct_relabel(tr_factors, ~gsub(":", "", .)))
 
@@ -337,11 +345,31 @@ factors_tr %>%
 
 ## Perception of practices
 
-Descriptive analyses will be conducted to examine the distribution of responses to all 3 questions of Q17. These analyses will inform us about how researchers perceive others’ practices regarding deviating from preregistration (Q17/1), reporting discrepancies (Q147/2), and comparing preregistrations to the corresponding papers (Q17/3).
+Descriptive analyses will be conducted to examine the distribution of responses to all 3 questions of Q17. These analyses will inform us about how researchers perceive others' practices regarding deviating from preregistration (Q17/1), reporting discrepancies (Q147/2), and comparing preregistrations to the corresponding papers (Q17/3).
 
 ```{r results = 'hide'}
 practices_perception <- data %>% 
   select(practices_perception_1, practices_perception_2, practices_perception_3)
+
+# Plot
+## Transform data for plotting
+practices_perception <- practices_perception %>%
+  rename(
+    deviation = practices_perception_1,
+    reporting = practices_perception_2,
+    checking = practices_perception_3) %>% 
+  pivot_longer(cols = everything(),
+               names_to = "practice",
+               values_to = "perceived_frequency") %>% 
+  mutate(perceived_frequency = as.numeric(perceived_frequency))
+
+## Create the ggplot
+ggplot(practices_perception, aes(x = perceived_frequency)) +
+  geom_histogram(binwidth = 10) +
+  facet_wrap(~practice, ncol = 1) +
+  labs(title = "Perception of Others' Practices",
+       x = "Frequency of Conducting the Practice (%)",
+       y = "Count")
 ```
 
 ## Incentives and support
@@ -353,18 +381,66 @@ incentives <- data %>%
   select(requirement, requirement_5_TEXT, guidance, guidance_5_TEXT, norms, training)
 
 # Requirement
+requirements <- incentives %>%
+  separate_rows(requirement, sep = ",") %>%
+  mutate(requirement = fct_relevel(requirement, "none", "else:", after = Inf)) %>% 
+  mutate(requirement = fct_rev(requirement)) %>% 
+  mutate(requirement = fct_relabel(requirement, ~gsub(":", "", .)))
 
+requirements %>% 
+  ggplot(aes(y = requirement)) +
+  geom_bar() +
+  labs(title = "Requirement of Reporting Discrepancies",
+       x = "Count",
+       y = "Stakeholders setting the requirement") +
+  scale_y_discrete(labels = c("my PI or collaborators." = "PI / collaboratos",
+                              "the funder of my research project." = "funder",
+                              "the journal where I would like to submit my paper/I have submitted my paper." = "journal"))
 
 # Guidance
+guidance <- incentives %>%
+  separate_rows(guidance, sep = ",") %>%
+  mutate(guidance = fct_relevel(guidance, "none", "else:", after = Inf)) %>% 
+  mutate(guidance = fct_rev(guidance)) %>% 
+  mutate(guidance = fct_relabel(guidance, ~gsub(":", "", .)))
 
+guidance %>% 
+  ggplot(aes(y = guidance)) +
+  geom_bar() +
+  labs(title = "Guidance on Reporting Discrepancies",
+       x = "Count",
+       y = "Stakeholders providing guidance") +
+  scale_y_discrete(labels = c("my PI or collaborators." = "PI / collaboratos",
+                              "the funder of my research project." = "funder",
+                              "the journal where I would like to submit my paper/I have submitted my paper." = "journal"))
 
 # Norms
+norms <- incentives %>% 
+  mutate(norms = factor(norms, levels = c("I agree", "I rather agree", "I rather don't agree", "I don't agree", "I don't know"))) %>% 
+   mutate(norms = fct_rev(norms))
+
+norms %>% 
+  ggplot(aes(y = norms)) +
+  geom_bar() +
+  labs(title = "Institutional Norms Serving as Motivation for Reporting Discrepancies",
+       x = "Count",
+       y = "Level of agreement")
 
 
 # Training
+trainings <- incentives %>%
+  mutate(training = factor(training, levels = c("Yes", "No", "I don't know"))) %>% 
+  mutate(training = fct_rev(training))
 
-
+trainings %>% 
+  ggplot(aes(y = training)) +
+  geom_bar() +
+  labs(title = "Availability of Trainings on Reporting Discrepancies",
+       x = "Count",
+       y = "Availability")+
+  scale_y_discrete(labels = c("I don't know" = "Don't know"))
 ```
+
 
 ```{r results = 'hide'}
 
