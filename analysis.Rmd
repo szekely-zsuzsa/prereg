@@ -1,0 +1,858 @@
+---
+title: "qualtrics_pilot"
+author: "Zsuzsa Szekely"
+date: "2024-02-23"
+output: html_document
+---
+
+```{r setup, results = 'hide'}
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(tidyr)
+library(forcats)
+library(ggrain)
+```
+
+```{r results = 'hide'}
+# data <- read.csv('C:/Users/szeke/OneDrive - elte.hu/METASCIENCE LAB/Projects/094_PreregDeviationsQuant/Data/Study1/Source/pilot.csv')
+
+data <- read.csv('C:/Users/szeke/OneDrive - elte.hu/METASCIENCE LAB/Projects/094_PreregDeviationsQuant/Data/Study1/Source/source_2024-03-30.csv')
+```
+
+```{r results = 'hide'}
+# Drop the first two rows in the data frame and incomplete responses
+data <- data %>%
+  filter(consent == "Yes") %>%
+  mutate(Progress = as.numeric(Progress)) %>%
+  filter(Progress >= 98) %>%
+  .[-c(1, 2), ]
+
+# Drop manual responses
+data <- data %>% 
+  filter(Status != "Survey Preview")
+
+# Count participants
+count(data)
+  
+data %>% 
+  count(scenario_version)
+```
+
+```{r results = 'hide'}
+# Replace -99 values with NA (-99 values stand for seen but unanswered questions)
+data <- data %>%
+  mutate_all(~ ifelse(. == -99, NA, .))
+```
+
+#ANALYSIS
+
+## Demographics
+
+Descriptive analyses will be conducted about the frequency of primary research areas, the scientific career stage, the country of the institution of the participants, and whether they have conducted a preregistered study or not.
+
+```{r results = 'hide'}
+demographics <- data %>% 
+  select(research_area, research_area_5_TEXT, phd_defense, phd_defense_2_TEXT, country, prereg_experience)
+
+# Research area
+## Check responses in the "Else" category
+demographics %>% 
+  count(research_area_5_TEXT)
+
+## Change "Other:" to "Other"
+demographics <- demographics %>%
+  mutate(research_area = ifelse(research_area == "Other:", "Other", research_area))
+
+## Plot
+order_area <- c("Clinical Medicine", "Multidisciplinary", "Psychiatry / Psychology", "Social Sciences", "Other")
+demographics$research_area <- factor(demographics$research_area, levels = order_area)
+
+research_area_plot <-
+  ggplot(demographics, aes(x = research_area)) +
+  geom_bar(stat = "count") +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
+  labs(# title = "Research areas of the participants",
+       x = "Research area",
+       y = "Count")
+
+ggsave("plots/research_area.png", plot = research_area_plot)
+
+demographics %>% 
+  count(research_area)
+
+# Career stage
+## Categorization: early career <10 years since PhD, mid-career = 10-20 years since PhD, late-career >20 years since PhD
+demographics <- demographics %>% 
+  mutate(phd_defense_2_TEXT = ifelse(!is.na(phd_defense_2_TEXT), as.numeric(phd_defense_2_TEXT), NA),
+         phd_defense_2_TEXT = ifelse(phd_defense == "I haven't had a PhD defense", 2024, phd_defense_2_TEXT),
+         years_since_phd = 2024 - phd_defense_2_TEXT,
+         career_stage = case_when(years_since_phd < 10 ~ "early-career",
+                                  years_since_phd >= 10 & years_since_phd < 20 ~ "mid-career",
+                                  years_since_phd >= 20 ~ "late-career",
+                                  TRUE ~ NA_character_))
+
+order_career <- c("early-career", "mid-career", "late-career", "NA")
+demographics$career_stage <- factor(demographics$career_stage, levels = order_career)
+
+career_stages_plot <-
+  ggplot(demographics, aes(x = career_stage)) +
+  geom_bar(stat = "count") +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
+  labs(# title = "Distribution of career stages in our sample",
+       x = "Career Stage",
+       y = "Count")
+
+ggsave("plots/career_stages.png", plot = career_stages_plot)
+
+demographics %>% 
+  count(career_stage)
+
+# Country
+
+
+# Preregistration experience
+prereg_experience_plot <-
+  ggplot(demographics, aes(x = prereg_experience)) +
+  geom_bar(stat = "count") +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
+  labs(# title = "Experience with preregistration",
+       x = "Having experience with preregistration",
+       y = "Count")
+
+ggsave("plots/prereg_experience.png", plot = prereg_experience_plot)
+
+demographics %>% 
+  count(prereg_experience)
+
+```
+
+## Expected consequences
+
+Descriptive analyses (frequency of responses) of questions Q6 and Q8 will provide us with information about the expected consequences of deviations (Q6) and their reporting (Q8) on one’s professional reputation.
+
+```{r results = 'hide'}
+expected_consequences <- data %>% 
+  select(prereg_experience, dev_experience, report_experience, dev_reputation_1, report_reputation_1, report_reputation_2, prereg_barriers_1, prereg_barriers_2, prereg_barriers_3, report_consequences_1, research_area)
+
+# Experience with deviation from preregistration
+expected_consequences %>% 
+  filter(prereg_experience == "Yes") %>%
+  # filter(dev_experience == "Yes") %>%
+  count(dev_experience)
+
+# Experience with reporting deviations
+expected_consequences %>% 
+  filter(prereg_experience == "Yes") %>%
+  filter(dev_experience == "Yes") %>%
+  filter(report_experience == "Yes") %>% 
+  count()
+```
+
+```{r results = 'hide'}
+# Reputation: deviation
+reputation_dev <- expected_consequences %>% 
+  filter(prereg_experience == "Yes") %>%
+  filter(dev_experience == "Yes") # filtering data according to the display logic of the relevant survey question
+
+order_reputation_dev <- c("I agree", "I rather agree", "I rather don't agree", "I don't agree", "I don't know")
+reputation_dev$dev_reputation_1 <- factor(reputation_dev$dev_reputation_1, levels = order_reputation_dev)
+
+reputation_dev_plot <- reputation_dev %>% 
+  ggplot(aes(x = dev_reputation_1)) +
+  geom_bar(stat = "count") +
+  labs(# title = "Expected consequences of deviating from the preregistration",
+       x = "I was concerned about my professional reputation for deviating from the preregistration.",
+       y = "Count")
+
+ggsave("plots/reputation_dev_count.png", plot = reputation_dev_plot)
+
+## Calculate proportions
+reputation_dev_plot_prop <- reputation_dev %>%
+  count(dev_reputation_1) %>%
+  mutate(proportion = n / sum(n) * 100)
+
+## Plotting proportions
+reputation_dev_plot_prop <- ggplot(reputation_dev_plot_prop, aes(x = dev_reputation_1, y = proportion)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = scales::percent(proportion/100)), vjust = -0.5) +
+  labs(# title = "Expected consequences of deviating from the preregistration: \nPreregistering group",
+       x = "I was concerned about my professional reputation for deviating from the preregistration.",
+       y = "Proportion (%)") +
+  coord_cartesian(ylim = c(0, 60))
+
+ggsave("plots/reputation_dev_prop_pr.png", plot = reputation_dev_plot_prop)
+
+# Reputation: reporting deviation
+reputation_report <- expected_consequences %>%
+  select(prereg_experience, dev_experience, report_experience, report_reputation_1, report_reputation_2, research_area) %>% 
+  filter(prereg_experience == "Yes") %>%
+  filter(dev_experience == "Yes") %>% # filtering data according to the display logic of the relevant survey question
+  unite(report_reputation, report_reputation_1, report_reputation_2, sep = "", na.rm = TRUE)
+
+order_reputation_report <- c("I agree", "I rather agree", "I rather don't agree", "I don't agree", "I don't know")
+reputation_report$report_reputation <- factor(reputation_report$report_reputation, levels = order_reputation_report)
+
+reputation_report_plot <- reputation_report %>% 
+  # filter(research_area == "Social Sciences") %>% 
+  ggplot(aes(x = report_reputation, 
+             # fill = factor(report_experience)
+             )) +
+  geom_bar(stat = "count") +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
+  #scale_fill_manual(values = c("No" = "#db0078", "Yes" = "#9a9c60"), name = "Experience with \nreporting deviations") +
+  labs(# title = "Expected consequences of not reporting deviations",
+       x = "I would be concerned about my professional reputation \n for not reporting discrepancies between my \n preregistration and the final study.",
+       y = "Count")
+
+ggsave("plots/reputation_report.png", plot = reputation_report_plot)
+
+reputation_report_plot
+```
+
+A descriptive analysis (frequency of responses) of question Q10/1 will provide us with information about the expected consequences of reporting deviations on the chances of publication.
+
+```{r results = 'hide'}
+# Chances for publication
+expected_consequences_plot <-
+  ggplot(expected_consequences, aes(x = report_consequences_1)) +
+  geom_bar(stat = "count") +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
+  labs(# title = "Expected chances for publication in regards of reporting deviations",
+       x = "Expected change in the chances for publication of a study due to reporting deviations",
+       y = "Count") +
+   scale_x_discrete(labels = c("less" = "decrease",
+                               "more" = "increase",
+                               "the same / equally" = "no change"))
+
+expected_consequences_plot
+  
+
+ggsave("plots/expected_consequences.png", plot = expected_consequences_plot)
+```
+
+Descriptive analyses (frequency of responses) of question Q9 will provide us with information about what holds people back from preregistration.
+
+```{r results = 'hide'}
+# Barriers for preregistration
+prereg_barriers <- expected_consequences %>%
+  filter(prereg_experience == "No") %>% # filtering data according to the display logic of the relevant survey question
+  pivot_longer(cols = starts_with("prereg_barriers"),
+               names_to = "prereg_barrier",
+               values_to = "prereg_barrier_value")
+
+# Plot
+## Define the custom order of levels
+order_barriers <- c("I agree", "I rather agree", "I rather don't agree", "I don't agree", "I don't know")
+prereg_barriers$prereg_barrier_value <- factor(prereg_barriers$prereg_barrier_value, levels = order_barriers)
+
+## Define custom labels for facets
+custom_labels <- c(
+  prereg_barriers_1 = "Preregistration would hold me back from scientific exploration.",
+  prereg_barriers_2 = "I would be concerned about my professional reputation if I deviated from my preregistration.",
+  prereg_barriers_3 = "I would do preregistration if it increased the chances of my paper being published.")
+
+## Apply labeller function to set custom labels
+prereg_barriers$prereg_barrier <- factor(prereg_barriers$prereg_barrier, labels = custom_labels)
+
+## Create the ggplot
+prereg_barriers_plot <-
+  ggplot(prereg_barriers, aes(x = prereg_barrier_value)) +
+  geom_bar(stat = "count") +
+  facet_wrap(~prereg_barrier, scales = "free_x", ncol = 1) +
+  labs(# title = "Barriers for Preregistration",
+       x = "Prereg Barrier Value",
+       y = "Count")
+
+ggsave("plots/prereg_barriers.png", plot = prereg_barriers_plot)
+
+# Plot concerns for professional reputation separately
+concern_plot <- prereg_barriers %>% 
+  filter(prereg_barrier == "I would be concerned about my professional reputation if I deviated from my preregistration.") %>% 
+  ggplot(aes(x = prereg_barrier_value)) +
+  geom_bar(stat = "count") +
+  labs(# title = "Expected consequences of deviating from the preregistration",
+       x = "I would be concerned about my professional reputation \n for deviating from the preregistration.",
+       y = "Count")
+
+## Calculate proportions
+concerns_plot_prop <- prereg_barriers %>%
+  count(prereg_barrier_value) %>%
+  mutate(proportion = n / sum(n) * 100)
+
+## Plotting proportions
+concerns_plot_prop <- ggplot(concerns_plot_prop, aes(x = prereg_barrier_value, y = proportion)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = scales::percent(proportion/100)), vjust = -0.5) +
+  labs(# title = "Expected consequences of deviating from the preregistration: \nNon-preregistering group",
+       x = "I would be concerned about my professional reputation \n for deviating from the preregistration.",
+       y = "Proportion (%)") +
+  coord_cartesian(ylim = c(0, 60))
+
+ggsave("plots/reputation_dev_prop_nonpr.png", plot = concerns_plot_prop)
+
+## Merged plot for expected consequences (prop): preregistering and non-preregistering group
+concerns_pr <- reputation_dev %>%
+  count(dev_reputation_1) %>%
+  rename(value = dev_reputation_1) %>% 
+  mutate(proportion = n / sum(n) * 100,
+         is_prereg = "Preregistering")
+
+concerns_non_pr <- prereg_barriers %>%
+  count(prereg_barrier_value) %>%
+  rename(value = prereg_barrier_value) %>% 
+  mutate(proportion = n / sum(n) * 100,
+         is_prereg = "Non-preregistering")
+
+merged_consequences <- bind_rows(concerns_pr, concerns_non_pr)
+
+concerns_merged_plot <- ggplot(merged_consequences, aes(x = value, y = proportion, fill = is_prereg)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = scales::percent(proportion/100)), 
+            position = position_dodge(width = 1),
+            vjust = -0.5) +
+  labs(# title = "Expected consequences of deviating from the preregistration",
+       x = "I would be concerned about my professional reputation \n for deviating from the preregistration.",
+       y = "Proportion of responses within each group (%)",
+       fill = "Experience with \npreregistration") +
+  scale_fill_manual(values = c("Preregistering" = "#DBCF7F", "Non-preregistering" = "#db0078")) +
+  coord_cartesian(ylim = c(0, 60))
+
+concerns_merged_plot
+
+ggsave("plots/reputation_dev_merged.png", plot = concerns_merged_plot)
+```
+
+## Scenarios
+
+We will analyze four scenarios, assessing both the study's credibility and the researcher's trustworthiness. Our investigation aims to explore whether the fact of preregistering a study affects the assessed credibility and trustworthiness. Similarly, we will examine if the fact of deviating from the original study plan affects credibility and trustworthiness. Additionally, we will investigate potential interactions between the two aforementioned factors (preregistration and deviations) along with the assessed credibility and trustworthiness.
+
+```{r results = 'hide'}
+scenarios <- data %>% 
+  select(scenario_version, assessed_cr_tr_a_1, assessed_cr_tr_a_2, assessed_cr_tr_b_1, assessed_cr_tr_b_2, assessed_cr_tr_c_1, assessed_cr_tr_c_2, assessed_cr_tr_d_1, assessed_cr_tr_d_2, cr_factors_a, cr_factors_a_9_TEXT, cr_factors_b, cr_factors_b_9_TEXT, cr_factors_c, cr_factors_c_9_TEXT, cr_factors_d, cr_factors_d_9_TEXT, tr_factors_a, tr_factors_a_9_TEXT, tr_factors_b, tr_factors_b_9_TEXT, tr_factors_c, tr_factors_c_9_TEXT, tr_factors_d, tr_factors_d_9_TEXT, fishy_c, fishy_d, report_consequences_2, report_consequences_3, research_area)
+
+# Merge data from A, B, C, D scenarios currently stored in 4 separate variables into 1 variable per question
+scenarios <- scenarios %>%
+  unite(credibility, starts_with("assessed_cr_tr_") & ends_with("_1"), sep = "", na.rm = FALSE) %>%
+  unite(trustworthiness, starts_with("assessed_cr_tr_") & ends_with("_2"), sep = "", na.rm = FALSE) %>% 
+  unite(cr_factors, c("cr_factors_a", "cr_factors_b", "cr_factors_c", "cr_factors_d"), sep = "", na.rm = FALSE) %>%
+  unite(cr_factors_text, c("cr_factors_a_9_TEXT", "cr_factors_b_9_TEXT", "cr_factors_c_9_TEXT", "cr_factors_d_9_TEXT"), sep = "", na.rm = FALSE) %>%
+  unite(tr_factors, c("tr_factors_a", "tr_factors_b", "tr_factors_c", "tr_factors_d"), sep = "", na.rm = FALSE) %>%
+  unite(tr_factors_text, c("tr_factors_a_9_TEXT", "tr_factors_b_9_TEXT", "tr_factors_c_9_TEXT", "tr_factors_d_9_TEXT"), sep = "", na.rm = FALSE) %>%
+  unite(fishy, c("fishy_c", "fishy_d"), sep = "", na.rm = FALSE)
+```
+
+```{r results = 'hide'}
+scenarios <- scenarios %>% 
+  mutate(credibility = as.numeric(credibility),
+         trustworthiness = as.numeric((trustworthiness))) %>% 
+  group_by(scenario_version) %>% 
+  mutate(N = n(),
+         cr_mean = mean(credibility, na.rm = TRUE),
+         cr_sd = sd(credibility, na.rm = TRUE),
+         cr_se = cr_sd / sqrt(N),
+         tr_mean = mean(trustworthiness, na.rm = TRUE),
+         tr_sd = sd(trustworthiness, na.rm = TRUE),
+         tr_se = tr_sd / sqrt(N)) %>% 
+  ungroup() %>% 
+  mutate(deviation = case_when(scenario_version == "A" ~ 0L,
+                               scenario_version == "B" ~ 0L,
+                               scenario_version == "C" ~ 1L,
+                               scenario_version == "D" ~ 1L),
+         prereg = case_when(scenario_version == "A" ~ 0L,
+                            scenario_version == "B" ~ 1L,
+                            scenario_version == "C" ~ 1L,
+                            scenario_version == "D" ~ 0L))
+
+# Credibility
+credibility_plot <- scenarios %>% 
+  ggplot(aes(x = deviation,
+             y = cr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = cr_mean - cr_se, ymax = cr_mean + cr_se), width = .1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  #scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#9a9c60"),
+                     labels = c("0" = "Non-Preregistered", "1" = "Preregistered")) +
+  scale_x_continuous(breaks = c(0, 1), labels = c("No deviation", "Deviation")) +
+  labs(shape = NULL,
+       # title = "Assessed credibility of the study \nin regards of preregistration and deviations",
+       x = "Deviation",
+       y = "Assessed credibility (%)",
+       color = NULL)
+
+credibility_plot
+
+# Trustworthiness
+trustworthiness_plot <- scenarios %>% 
+  ggplot(aes(x = deviation,
+             y = tr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = tr_mean - tr_se, ymax = tr_mean + tr_se), width=.1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  # scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#9a9c60"),
+                     labels = c("0" = "Non-Preregistered", "1" = "Preregistered")) +
+  scale_x_continuous(breaks = c(0, 1), labels = c("No deviation", "Deviation")) +
+  labs(shape = NULL,
+       # title = "Assessed trustworthiness of the author \nin regards of preregistration and deviations",
+       x = "Deviation",
+       y = "Assessed trustworthiness (%)",
+       color = NULL)
+
+trustworthiness_plot
+
+# Export plots
+credibility_plot <- credibility_plot +
+  theme(
+    # plot.title = element_text(size = 24),  # Increase font size for plot title
+    axis.title = element_text(size = 20),  # Increase font size for axis labels
+    axis.text = element_text(size = 16),
+    legend.text = element_text(size = 16)  # Increase font size for axis text
+  )
+
+ggsave("plots/credibility_plot.png", plot = credibility_plot, width = 10, height = 10, units = "in", dpi = 300)
+
+trustworthiness_plot <- trustworthiness_plot +
+  theme(
+    # plot.title = element_text(size = 24),  # Increase font size for plot title
+    axis.title = element_text(size = 20),  # Increase font size for axis labels
+    axis.text = element_text(size = 16),
+    legend.text = element_text(size = 16)  # Increase font size for axis text
+  )
+
+ggsave("plots/trustworthiness_plot.png", plot = trustworthiness_plot, width = 10, height = 10, units = "in", dpi = 300)
+```
+
+Plotting credibility and trustworthiness, split by research areas
+
+```{r}
+scenarios_areas <- scenarios %>%
+  mutate(clinical_social = case_when(research_area == "Clinical Medicine" ~ "Clinical Medicine",
+                           research_area == "Psychiatry / Psychology" ~ "Social Sciences",
+                           research_area == "Social Sciences" ~ "Social Sciences",
+                           TRUE ~ "Other")) %>% 
+  group_by(scenario_version, clinical_social) %>% 
+  mutate(N = n(),
+         cr_mean = mean(credibility, na.rm = TRUE),
+         cr_sd = sd(credibility, na.rm = TRUE),
+         cr_se = cr_sd / sqrt(N),
+         tr_mean = mean(trustworthiness, na.rm = TRUE),
+         tr_sd = sd(trustworthiness, na.rm = TRUE),
+         tr_se = tr_sd / sqrt(N)) %>% 
+  ungroup() %>% 
+  mutate(deviation = case_when(scenario_version == "A" ~ 0L,
+                               scenario_version == "B" ~ 0L,
+                               scenario_version == "C" ~ 1L,
+                               scenario_version == "D" ~ 1L),
+         prereg = case_when(scenario_version == "A" ~ 0L,
+                            scenario_version == "B" ~ 1L,
+                            scenario_version == "C" ~ 1L,
+                            scenario_version == "D" ~ 0L))
+
+# Credibility
+## Clinical Medicine
+credibility_plot_clinical <- scenarios_areas %>% 
+  filter(clinical_social == "Clinical Medicine") %>% 
+  ggplot(aes(x = deviation,
+             y = cr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = cr_mean - cr_se, ymax = cr_mean + cr_se), width = .1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  #scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#9a9c60"),
+                     labels = c("0" = "Non-Preregistered", "1" = "Preregistered")) +
+  scale_x_continuous(breaks = c(0, 1), labels = c("No deviation", "Deviation")) +
+  labs(shape = NULL,
+       # title = "Assessed credibility of the study \nin regards of preregistration and deviations",
+       x = "Deviation",
+       y = "Assessed credibility (%)",
+       color = NULL)
+
+credibility_plot_clinical
+
+## Social Sciences
+credibility_plot_social <- scenarios_areas %>% 
+  filter(clinical_social == "Social Sciences") %>% 
+  ggplot(aes(x = deviation,
+             y = cr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = cr_mean - cr_se, ymax = cr_mean + cr_se), width = .1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  #scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#9a9c60"),
+                     labels = c("0" = "Non-Preregistered", "1" = "Preregistered")) +
+  scale_x_continuous(breaks = c(0, 1), labels = c("No deviation", "Deviation")) +
+  labs(shape = NULL,
+       # title = "Assessed credibility of the study \nin regards of preregistration and deviations",
+       x = "Deviation",
+       y = "Assessed credibility (%)",
+       color = NULL)
+
+credibility_plot_social
+
+## Other
+credibility_plot_other <- scenarios_areas %>% 
+  filter(clinical_social == "Other") %>% 
+  ggplot(aes(x = deviation,
+             y = cr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = cr_mean - cr_se, ymax = cr_mean + cr_se), width = .1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  #scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#9a9c60"),
+                     labels = c("0" = "Non-Preregistered", "1" = "Preregistered")) +
+  scale_x_continuous(breaks = c(0, 1), labels = c("No deviation", "Deviation")) +
+  labs(shape = NULL,
+       # title = "Assessed credibility of the study \nin regards of preregistration and deviations",
+       x = "Deviation",
+       y = "Assessed credibility (%)",
+       color = NULL)
+
+credibility_plot_other
+
+# Trustworthiness
+## Clinical Medicine
+trustworthiness_plot_clinical <- scenarios_areas %>% 
+  filter(clinical_social == "Clinical Medicine") %>% 
+  ggplot(aes(x = deviation,
+             y = tr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = tr_mean - tr_se, ymax = tr_mean + tr_se), width=.1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  # scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#9a9c60"),
+                     labels = c("0" = "Non-Preregistered", "1" = "Preregistered")) +
+  scale_x_continuous(breaks = c(0, 1), labels = c("No deviation", "Deviation")) +
+  labs(shape = NULL,
+       # title = "Assessed trustworthiness of the author \nin regards of preregistration and deviations",
+       x = "Deviation",
+       y = "Assessed trustworthiness (%)",
+       color = NULL)
+
+trustworthiness_plot_clinical
+
+## Social Sciences
+trustworthiness_plot_social <- scenarios_areas %>% 
+  filter(clinical_social == "Social Sciences") %>% 
+  ggplot(aes(x = deviation,
+             y = tr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = tr_mean - tr_se, ymax = tr_mean + tr_se), width=.1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  # scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#9a9c60"),
+                     labels = c("0" = "Non-Preregistered", "1" = "Preregistered")) +
+  scale_x_continuous(breaks = c(0, 1), labels = c("No deviation", "Deviation")) +
+  labs(shape = NULL,
+       # title = "Assessed trustworthiness of the author \nin regards of preregistration and deviations",
+       x = "Deviation",
+       y = "Assessed trustworthiness (%)",
+       color = NULL)
+
+trustworthiness_plot_social
+
+## Other
+trustworthiness_plot_other <- scenarios_areas %>%
+  filter(clinical_social == "Other") %>% 
+  ggplot(aes(x = deviation,
+             y = tr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = tr_mean - tr_se, ymax = tr_mean + tr_se), width=.1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  # scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#9a9c60"),
+                     labels = c("0" = "Non-Preregistered", "1" = "Preregistered")) +
+  scale_x_continuous(breaks = c(0, 1), labels = c("No deviation", "Deviation")) +
+  labs(shape = NULL,
+       # title = "Assessed trustworthiness of the author \nin regards of preregistration and deviations",
+       x = "Deviation",
+       y = "Assessed trustworthiness (%)",
+       color = NULL)
+
+trustworthiness_plot_other
+```
+
+Based on the scenario evaluations, we will have information about how people assess credibility and trustworthiness. Besides, we will also have information about the expected credibility and trustworthiness, based on Q10/2 and Q10/3 from the "Expected consequences" block of the questionnaire. By comparing these (assessed and expected) results, we will see if the assessed credibility and trustworthiness are aligned with the expected credibility and trustworthiness. To do this, we will take the expected credibility (Q10/2) results, which can take one of 3 values on a Likert scale: less, equally, or more. The participants' responses will be sorted into 3 groups according to the scale values. Within each group, we will examine how the assessed credibility results turned out: whether the participants considered the scenarios with a deviation as less, equally, or more credible than the scenarios without a deviation. This way, the expected and assessed credibility results can be compared. We will do the same analysis for the trustworthiness variable (Q10/3).
+
+```{r results = 'hide'}
+# Expected vs. assessed credibility
+exp_ass_cr <- scenarios %>% 
+  group_by(report_consequences_2, deviation) %>% 
+  mutate(exp_ass_cr_mean = mean(credibility, na.rm = TRUE),
+         exp_ass_cr_sd = sd(credibility, na.rm = TRUE)) %>% 
+  ungroup()
+
+exp_ass_cr %>% 
+  count(report_consequences_2, deviation, exp_ass_cr_mean)
+
+# Expected vs. assessed trustworthiness
+exp_ass_tr <- scenarios %>% 
+  group_by(report_consequences_3, deviation) %>% 
+  mutate(exp_ass_tr_mean = mean(trustworthiness, na.rm = TRUE),
+         exp_ass_tr_sd = sd(trustworthiness, na.rm = TRUE)) %>% 
+  ungroup()
+
+exp_ass_tr %>% 
+  count(report_consequences_3, deviation, exp_ass_tr_mean)
+
+# Plotting expected cr and tr results
+exp_cr_tr <- scenarios %>% 
+  select(report_consequences_2, report_consequences_3) %>% 
+  rename(credibility = report_consequences_2, trustworthiness = report_consequences_3) %>% 
+  pivot_longer(cols = everything(),
+               names_to = "cr_tr",
+               values_to = "response")
+
+exp_cr_tr_plot <- exp_cr_tr %>% 
+  ggplot(aes(x = response, fill = cr_tr)) +
+  geom_bar(stat = "count", position = "dodge") +
+  geom_text(stat = "count",
+            aes(label = after_stat(count)),
+            vjust = -0.5,
+            position = position_dodge(width = 1)) +
+  labs(# title = "Expected consequences of reporting deviations from the preregistration \non the perceived credibility of one's work and own trusworthiness",
+       x = "Expected change in the level of the perceived credibility and trusrworthiness",
+       y = "Count",
+       fill = NULL) +
+  scale_fill_manual(values = c("trustworthiness" = "#9a9c60", "credibility" = "#db0078"))+
+  scale_x_discrete(labels = c("less" = "decrease",
+                              "more" = "increase",
+                              "the same / equally" = "no change"))
+
+exp_cr_tr_plot
+
+ggsave("plots/expected_cr_tr.png", plot = exp_cr_tr_plot)
+```
+
+We will examine whether the assessed credibility of the study and the assessed trustworthiness of the author are align with each other. Data from all four scenarios will be pooled for this analysis.
+
+```{r results = 'hide'}
+# Correlation: credibility and trustworthiness
+cr_tr_plot <- scenarios %>% 
+  ggplot(aes(x = credibility, y = trustworthiness)) +
+  geom_point(
+            #aes(color = scenario_version)
+            ) +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(# title = "Relation Between Assessed Credibility and Trustworthiness",
+       x = "Credibility",
+       y = "Trustworthiness",
+       # color = "Scenario version"
+       )
+
+cr_tr_plot
+
+ggsave("plots/cr_tr.png", plot = cr_tr_plot)
+
+# Calculate correlation
+correlation <- cor(scenarios$credibility, scenarios$trustworthiness)
+correlation
+```
+
+Descriptive analyses (frequency of responses) of questions Q14 and Q15 will show what factors are mostly considered when assessing credibility and trustworthiness.
+
+```{r results = 'hide'}
+# Credibility factors
+factors_cr <- scenarios %>% 
+  separate_rows(cr_factors, sep = ",") %>%
+  mutate(cr_factors = fct_relevel(cr_factors, "other:", after = Inf)) %>% 
+  mutate(cr_factors = fct_rev(cr_factors)) %>% 
+  mutate(cr_factors = fct_relabel(cr_factors, ~gsub(":", "", .)))
+
+factors_cr_plot <- factors_cr %>%
+  ggplot(aes(y = cr_factors)) +
+  geom_bar() +
+  labs(# title = "Factors Considered When Assessing the \nCredibility of a Study",
+       x = "Count",
+       y = "Factors") +
+  coord_cartesian(xlim = c(0, 1000))
+
+# Trustworthiness factors
+factors_tr <- scenarios %>% 
+  separate_rows(tr_factors, sep = ",") %>%
+  mutate(tr_factors = fct_relevel(tr_factors, "other:", after = Inf)) %>% 
+  mutate(tr_factors = fct_rev(tr_factors)) %>% 
+  mutate(tr_factors = fct_relabel(tr_factors, ~gsub(":", "", .)))
+
+factors_tr_plot <- factors_tr %>%
+  ggplot(aes(y = tr_factors)) +
+  geom_bar() +
+  labs(# title = "Factors Considered When Assessing the \nTrustworthiness of an Author",
+       x = "Count",
+       y = "Factors") +
+  coord_cartesian(xlim = c(0, 1000))
+
+# Export
+ggsave("plots/factors_cr.png", plot = factors_cr_plot, units = "in", dpi = 300)
+ggsave("plots/factors_tr.png", plot = factors_tr_plot, units = "in", dpi = 300)
+
+```
+
+```{r}
+# Fishy
+fishy <- scenarios %>% 
+  filter(scenario_version == c("C", "D"))
+
+fishy_plot <- fishy %>% 
+  ggplot(aes(x = fishy)) +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
+  geom_bar() +
+  geom_bar() +
+  labs(# title = "Evaluation of the deviation from the original plan",
+       x = "Evaluation of the deviation",
+       y = "Count")
+
+fishy_plot
+
+# Export
+ggsave("plots/fishy.png", plot = fishy_plot, units = "in", dpi = 300)
+```
+
+## Perception of practices
+
+Descriptive analyses will be conducted to examine the distribution of responses to all 3 questions of Q17. These analyses will inform us about how researchers perceive others' practices regarding deviating from preregistration (Q17/1), reporting discrepancies (Q147/2), and comparing preregistrations to the corresponding papers (Q17/3).
+
+```{r results = 'hide'}
+practices_perception <- data %>% 
+  select(practices_perception_1, practices_perception_2, practices_perception_3)
+
+# Plot
+## Transform data for plotting
+practices_perception <- practices_perception %>%
+  rename(
+    deviation = practices_perception_1,
+    reporting = practices_perception_2,
+    checking = practices_perception_3) %>% 
+  pivot_longer(cols = everything(),
+               names_to = "practice",
+               values_to = "perceived_frequency") %>% 
+  mutate(perceived_frequency = as.numeric(perceived_frequency))
+
+## Create the ggplot
+practices_perception_plot <-
+  ggplot(practices_perception, aes(x = perceived_frequency)) +
+  geom_histogram(binwidth = 10) +
+  facet_wrap(~practice, ncol = 1) +
+  labs(# title = "Perception of Others' Practices",
+       x = "Frequency of Adopting the Practice (%)",
+       y = "Count")
+
+ggsave("plots/practices_perception.png", plot = practices_perception_plot)
+```
+
+## Incentives and support
+
+Descriptive analyses will examine the frequency of responses to Q18, Q19, Q20, and Q21.
+
+```{r results = 'hide'}
+incentives <- data %>% 
+  select(requirement, requirement_5_TEXT, guidance, guidance_5_TEXT, norms, training)
+
+# Requirement
+requirements <- incentives %>%
+  separate_rows(requirement, sep = ",") %>%
+  mutate(requirement = fct_relevel(requirement, "none", "else:", after = Inf)) %>% 
+  mutate(requirement = fct_rev(requirement)) %>% 
+  mutate(requirement = fct_relabel(requirement, ~gsub(":", "", .)))
+
+requirements_plot <-
+  requirements %>% 
+  ggplot(aes(y = requirement)) +
+  geom_bar() +
+  labs(# title = "Requirement of Reporting Discrepancies",
+       x = "Count",
+       y = "Stakeholders setting the requirement") +
+  scale_y_discrete(labels = c("my PI or collaborators." = "PI / collaboratos",
+                              "the funder of my research project." = "funder",
+                              "the journal where I would like to submit my paper/I have submitted my paper." = "journal"))
+
+# Guidance
+guidance <- incentives %>%
+  separate_rows(guidance, sep = ",") %>%
+  mutate(guidance = fct_relevel(guidance, "none", "else:", after = Inf)) %>% 
+  mutate(guidance = fct_rev(guidance)) %>% 
+  mutate(guidance = fct_relabel(guidance, ~gsub(":", "", .)))
+
+guidance_plot <-
+  guidance %>% 
+  ggplot(aes(y = guidance)) +
+  geom_bar() +
+  labs(# title = "Guidance on Reporting Discrepancies",
+       x = "Count",
+       y = "Stakeholders providing guidance") +
+  scale_y_discrete(labels = c("my PI or collaborators." = "PI / collaboratos",
+                              "the funder of my research project." = "funder",
+                              "the journal where I would like to submit my paper/I have submitted my paper." = "journal"))
+
+# Norms
+norms <- incentives %>% 
+  mutate(norms = factor(norms, levels = c("I agree", "I rather agree", "I rather don't agree", "I don't agree", "I don't know"))) %>% 
+   mutate(norms = fct_rev(norms))
+
+norms_plot <-
+  norms %>% 
+  ggplot(aes(y = norms)) +
+  geom_bar() +
+  labs(# title = "Institutional Norms Serving as Motivation for Reporting Discrepancies",
+       x = "Count",
+       y = "Level of agreement")
+
+
+# Training
+trainings <- incentives %>%
+  mutate(training = factor(training, levels = c("Yes", "No", "I don't know"))) %>% 
+  mutate(training = fct_rev(training))
+
+trainings_plot <-
+  trainings %>% 
+  ggplot(aes(y = training)) +
+  geom_bar() +
+  labs(# title = "Availability of Trainings on Preregistration",
+       x = "Count",
+       y = "Availability") +
+  scale_y_discrete(labels = c("I don't know" = "Don't know"))
+
+# Export
+ggsave("plots/requirements.png", plot = requirements_plot)
+ggsave("plots/guidance.png", plot = guidance_plot)
+ggsave("plots/norms.png", plot = norms_plot)
+ggsave("plots/trainings.png", plot = trainings_plot)
+```
+
+
+```{r results = 'hide'}
+
+```
