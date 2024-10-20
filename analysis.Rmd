@@ -5,6 +5,8 @@ date: "2024-02-23"
 output: html_document
 ---
 
+#PREPARATION
+
 ```{r setup, results = 'hide'}
 library(dplyr)
 library(ggplot2)
@@ -31,6 +33,10 @@ data <- data %>%
 # Drop manual responses
 data <- data %>% 
   filter(Status != "Survey Preview")
+
+# Drop title variable
+data <- data %>% 
+  select(-title)
 
 # Count participants
 count(data)
@@ -174,6 +180,78 @@ ggsave("plots/prereg_experience.png", plot = prereg_experience_plot)
 demographics %>% 
   count(prereg_experience)
 
+
+# Hungarian plots
+## research area
+research_area_plot_hu <-
+  ggplot(demographics, aes(x = research_area)) +
+  geom_bar(stat = "count") +
+  geom_text(aes(label = paste0(round(research_area_prop, 1), "%"),
+                 y = ..count..), 
+            stat = "count", 
+            vjust = -0.5) +
+  labs(# title = "Research areas of the participants",
+       x = "Kutatási terület",
+       y = "Résztvevok száma") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black")) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 375)) +
+  scale_x_discrete(labels = c("Clinical Medicine" = "Klinikai orvoslás",
+                              "Psychiatry / Psychology" = "Pszichiátria / Pszichológia",
+                              "Other" = "Egyéb",
+                              "Multidisciplinary" = "Multidiszciplináris",
+                              "Social Sciences" = "Társadalomtudomány"))
+
+
+ggsave("plots/magyar/research_area_hu.png", plot = research_area_plot_hu)
+
+## Career stage
+career_stages_plot_hu <-
+  ggplot(demographics, aes(x = career_stage)) +
+  geom_bar(stat = "count") +
+  geom_text(aes(label = paste0(round(career_stage_prop, 1), "%"),
+                 y = ..count..), 
+            stat = "count", 
+            vjust = -0.5) + 
+  labs(# title = "Distribution of career stages in our sample",
+       x = "Karrierszint",
+       y = "Résztvevok száma") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        panel.border = element_blank(), 
+        axis.line = element_line(color = "black")) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 600)) +
+  scale_x_discrete(labels = c("early-career" = "Pályakezdo kutató",
+                               "mid-career" = "Tapasztalt kutató",
+                               "late-career" = "Szenior kutató"))
+
+ggsave("plots/magyar/career_stages_hu.png", plot = career_stages_plot_hu)
+
+## Prereg experience
+prereg_experience_plot_hu <-
+  ggplot(demographics, aes(x = prereg_experience)) +
+  geom_bar(stat = "count") +
+  geom_text(aes(label = paste0(round(prereg_experience_prop, 1), "%"),
+                 y = ..count..), 
+            stat = "count", 
+            vjust = -0.5) + 
+  labs(# title = "Experience with preregistration",
+       x = "Preregisztrációs tapasztalat",
+       y = "Résztvevok száma") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black")) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 675)) +
+  scale_x_discrete(labels = c("Yes" = "Van",
+                              "No" = "Nincs"))
+
+ggsave("plots/magyar/prereg_experience_hu.png", plot = prereg_experience_plot_hu)
 ```
 
 ## Expected consequences
@@ -283,6 +361,45 @@ reputation_report_plot <- reputation_report %>%
 reputation_report_plot
 
 ggsave("plots/reputation_report.png", plot = reputation_report_plot)
+
+# Hungarian plot
+reputation_report_plot_hu <- reputation_report %>% 
+  # filter(research_area == "Social Sciences") %>% 
+  ggplot(aes(x = report_reputation, 
+             #fill = factor(research_area)
+             )) +
+  geom_bar(stat = "count") +
+  geom_text(aes(label = paste0(round(report_reputation_prop, 1), "%"),
+                 y = ..count..), 
+            stat = "count", 
+            vjust = -0.5) +  
+  # scale_fill_manual(values = c("Clinical Medicine" = "#db0078", "Psychiatry / Psychology" = "#DBCF7F", "Multidisciplinary" = "#A6B5D9", "Social Sciences" = "#DC7332", "Other:" = "#847785"), name = "Research area") +
+  labs(# title = "Expected consequences of not reporting deviations",
+       x = "Ha nem közölném a preregisztráció és a publikáció közötti eltéréseket, \naggódnék a szakmai reputációm miatt.",
+       y = "Válaszok száma") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.title.x = element_text(size = 14),  # Increase x-axis title font size
+        axis.title.y = element_text(size = 14),  # Increase y-axis title font size
+        axis.text.x = element_text(size = 12),   # Increase x-axis text font size
+        axis.text.y = element_text(size = 12),   # Increase y-axis text font size
+        strip.text = element_text(size = 14),    # Increase facet text font size
+        legend.text = element_text(size = 12),   # Increase legend text font size
+        legend.title = element_text(size = 14)   # Increase legend title font size
+        ) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 275)) +
+  scale_x_discrete(labels = c("I agree" = "Egyetértek",
+                              "I rather agree" = "Inkább \negyetértek",
+                              "I rather don't agree" = "Inkább nem \nértek egyet",
+                              "I don't agree" = "Nem értek \negyet",
+                              "I don't know" = "Nem tudom"))
+
+reputation_report_plot_hu
+
+ggsave("plots/magyar/reputation_report_hu.png", plot = reputation_report_plot_hu, width = 10, height = 6)
 ```
 
 A descriptive analysis (frequency of responses) of question Q10/1 will provide us with information about the expected consequences of reporting deviations on the chances of publication.
@@ -320,6 +437,40 @@ expected_consequences_plot
   
 
 ggsave("plots/expected_consequences.png", plot = expected_consequences_plot)
+
+# Hungarian plot
+expected_consequences_plot_hu <-
+  ggplot(expected_consequences, aes(x = report_consequences_1)) +
+  geom_bar(stat = "count") +
+  geom_text(aes(label = paste0(round(report_consequences_1_prop, 1), "%"),
+                 y = ..count..), 
+            stat = "count", 
+            vjust = -0.5) +
+  labs(# title = "Expected chances for publication in regards of reporting deviations",
+       x = "Publikáció esélyeinek vélt változása az eltérések közlésének hatására",
+       y = "Válaszok száma") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.title.x = element_text(size = 14),  # Increase x-axis title font size
+        axis.title.y = element_text(size = 14),  # Increase y-axis title font size
+        axis.text.x = element_text(size = 12),   # Increase x-axis text font size
+        axis.text.y = element_text(size = 12),   # Increase y-axis text font size
+        strip.text = element_text(size = 14),    # Increase facet text font size
+        legend.text = element_text(size = 12),   # Increase legend text font size
+        legend.title = element_text(size = 14)   # Increase legend title font size
+        ) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 630)) +
+  scale_x_discrete(labels = c("less" = "Csökkenés",
+                               "more" = "Növekedés",
+                               "the same / equally" = "Nincs változás"))
+
+expected_consequences_plot_hu
+  
+
+ggsave("plots/magyar/expected_consequences_hu.png", plot = expected_consequences_plot_hu, width = 10, height = 6)
 ```
 
 Descriptive analyses (frequency of responses) of question Q9 will provide us with information about what holds people back from preregistration.
@@ -356,6 +507,11 @@ prereg_barriers_plot <-
        y = "Number of responses")
 
 ggsave("plots/prereg_barriers.png", plot = prereg_barriers_plot)
+
+prereg_barriers %>% 
+  group_by(prereg_barrier, prereg_barrier_value) %>% 
+  count() %>% 
+  View()
 
 # Plot concerns for professional reputation separately
 concern_plot <- prereg_barriers %>% 
@@ -418,6 +574,46 @@ concerns_merged_plot <- ggplot(merged_consequences, aes(x = value, y = proportio
 concerns_merged_plot
 
 ggsave("plots/reputation_dev_merged.png", plot = concerns_merged_plot)
+
+# Hungarian plot
+merged_consequences$is_prereg <- factor(merged_consequences$is_prereg, 
+                                        levels = c("Preregistering", "Non-preregistering"),
+                                        labels = c("Van", "Nincs"))
+
+concerns_merged_plot_hu <- ggplot(merged_consequences, aes(x = value, y = proportion, fill = is_prereg)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = scales::percent(proportion/100, accuracy = 0.1)), 
+            position = position_dodge(width = 0.8),
+            vjust = -0.5) +
+  labs(# title = "Expected consequences of deviating from the preregistration",
+       x = "Ha eltérnék a preregisztrációtól, aggódnék a szakmai reputációm miatt.",
+       y = "Válaszok aránya csoportonként (%)",
+       fill = "Preregisztrációs \ntapasztalat") +
+  scale_fill_manual(values = c("Van" = "#DBCF7F", "Nincs" = "#db0078")) +
+  coord_cartesian(ylim = c(0, 60)) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.title.x = element_text(size = 14),  # Increase x-axis title font size
+        axis.title.y = element_text(size = 14),  # Increase y-axis title font size
+        axis.text.x = element_text(size = 12),   # Increase x-axis text font size
+        axis.text.y = element_text(size = 12),   # Increase y-axis text font size
+        strip.text = element_text(size = 14),    # Increase facet text font size
+        legend.text = element_text(size = 12),   # Increase legend text font size
+        legend.title = element_text(size = 14)   # Increase legend title font size
+        ) +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_x_discrete(labels = c("I agree" = "Egyetértek",
+                              "I rather agree" = "Inkább \negyetértek",
+                              "I rather don't agree" = "Inkább nem \nértek egyet",
+                              "I don't agree" = "Nem értek \negyet",
+                              "I don't know" = "Nem tudom"))
+
+concerns_merged_plot_hu
+
+ggsave("plots/magyar/reputation_dev_merged_hu.png", plot = concerns_merged_plot_hu, width = 10, height = 6)
 ```
 
 ## Scenarios
@@ -426,7 +622,7 @@ We will analyze four scenarios, assessing both the study's credibility and the r
 
 ```{r results = 'hide'}
 scenarios <- data %>% 
-  select(scenario_version, assessed_cr_tr_a_1, assessed_cr_tr_a_2, assessed_cr_tr_b_1, assessed_cr_tr_b_2, assessed_cr_tr_c_1, assessed_cr_tr_c_2, assessed_cr_tr_d_1, assessed_cr_tr_d_2, cr_factors_a, cr_factors_a_9_TEXT, cr_factors_b, cr_factors_b_9_TEXT, cr_factors_c, cr_factors_c_9_TEXT, cr_factors_d, cr_factors_d_9_TEXT, tr_factors_a, tr_factors_a_9_TEXT, tr_factors_b, tr_factors_b_9_TEXT, tr_factors_c, tr_factors_c_9_TEXT, tr_factors_d, tr_factors_d_9_TEXT, fishy_c, fishy_d, report_consequences_2, report_consequences_3, research_area)
+  select(scenario_version, assessed_cr_tr_a_1, assessed_cr_tr_a_2, assessed_cr_tr_b_1, assessed_cr_tr_b_2, assessed_cr_tr_c_1, assessed_cr_tr_c_2, assessed_cr_tr_d_1, assessed_cr_tr_d_2, cr_factors_a, cr_factors_a_9_TEXT, cr_factors_b, cr_factors_b_9_TEXT, cr_factors_c, cr_factors_c_9_TEXT, cr_factors_d, cr_factors_d_9_TEXT, tr_factors_a, tr_factors_a_9_TEXT, tr_factors_b, tr_factors_b_9_TEXT, tr_factors_c, tr_factors_c_9_TEXT, tr_factors_d, tr_factors_d_9_TEXT, fishy_c, fishy_d, report_consequences_2, report_consequences_3, research_area, prereg_experience)
 
 # Merge data from A, B, C, D scenarios currently stored in 4 separate variables into 1 variable per question
 scenarios <- scenarios %>%
@@ -459,7 +655,11 @@ scenarios <- scenarios %>%
          prereg = case_when(scenario_version == "A" ~ 0L,
                             scenario_version == "B" ~ 1L,
                             scenario_version == "C" ~ 1L,
-                            scenario_version == "D" ~ 0L))
+                            scenario_version == "D" ~ 0L),
+         prereg_experience = case_when(prereg_experience == "No" ~ 0L,
+                                       prereg_experience == "Yes" ~ 1L))
+
+# write.csv(scenarios, file = "scenarios.csv", row.names = FALSE)
 
 # Credibility
 credibility_plot <- scenarios %>% 
@@ -541,6 +741,79 @@ trustworthiness_plot <- trustworthiness_plot +
   )
 
 ggsave("plots/trustworthiness_plot.png", plot = trustworthiness_plot, width = 10, height = 10, units = "in", dpi = 300)
+
+# Scenarios Hungarian plots
+## Credibility
+credibility_plot_hu <- scenarios %>% 
+  ggplot(aes(x = deviation,
+             y = cr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = cr_mean - cr_se, ymax = cr_mean + cr_se), width = .1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  #scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#DBCF7F"),
+                     labels = c("0" = "Nem preregisztrált", "1" = "Preregisztrált")) +
+  scale_x_continuous(breaks = c(0, 1),
+                     labels = c("Nincs", "Van"),
+                     expand = c(0.1, 0)) +
+  labs(shape = NULL,
+       # title = "Assessed credibility of the study \nin regards of preregistration and deviations",
+       x = "Tárgyalt eltérés",
+       y = "Kutatás észlelt megbízhatósága (%)",
+       color = NULL) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.title = element_text(size = 20),  # Increase font size for axis labels
+        axis.text = element_text(size = 16),
+        legend.text = element_text(size = 16)  # Increase font size for axis text
+        )
+
+credibility_plot_hu
+
+ggsave("plots/magyar/credibility_plot_hu.png", plot = credibility_plot_hu, width = 6, height = 6, units = "in", dpi = 300)
+
+# Trustworthiness
+trustworthiness_plot_hu <- scenarios %>% 
+  ggplot(aes(x = deviation,
+             y = tr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = tr_mean - tr_se, ymax = tr_mean + tr_se), width=.1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  # scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#DBCF7F"),
+                     labels = c("0" = "Nem preregisztrált", "1" = "Preregisztrált")) +
+  scale_x_continuous(breaks = c(0, 1),
+                     labels = c("Nincs", "Van"),
+                     expand = c(0.1, 0)) +
+  labs(shape = NULL,
+       # title = "Assessed trustworthiness of the author \nin regards of preregistration and deviations",
+       x = "Tárgyalt eltérés",
+       y = "Kutató észlelt megbízhatósága (%)",
+       color = NULL) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.title = element_text(size = 20),  # Increase font size for axis labels
+        axis.text = element_text(size = 16),
+        legend.text = element_text(size = 16)  # Increase font size for axis text
+        )
+
+trustworthiness_plot_hu
+
+ggsave("plots/magyar/trustworthiness_plot_hu.png", plot = trustworthiness_plot_hu, width = 6, height = 6, units = "in", dpi = 300)
 ```
 
 Raincloud plot for credibility and trustworthiness assessments
@@ -616,6 +889,11 @@ scenarios_areas <- scenarios %>%
                             scenario_version == "B" ~ 1L,
                             scenario_version == "C" ~ 1L,
                             scenario_version == "D" ~ 0L))
+
+# write.csv(scenarios_areas, file = "scenarios_areas.csv", row.names = FALSE)
+# scenarios_social <- scenarios_areas %>% 
+#   filter(clinical_social == "Social Sciences")
+# write.csv(scenarios_social, file = "scenarios_social.csv", row.names = FALSE)
 
 # Credibility
 ## Clinical Medicine
@@ -977,6 +1255,168 @@ scenarios_fishy %>%
 
 scenarios_not_fishy %>% 
   count(fishy, scenario_version)
+
+# Hungarian plots
+## Fishy
+### Credibility
+credibility_plot_fishy_hu <- scenarios_fishy %>% 
+  ggplot(aes(x = deviation,
+             y = cr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = cr_mean - cr_se, ymax = cr_mean + cr_se), width = .1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  #scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#DBCF7F"),
+                     labels = c("0" = "Nem preregisztrált", "1" = "Preregisztrált")) +
+  scale_x_continuous(breaks = c(0, 1),
+                     labels = c("Nincs", "Van"),
+                     expand = c(0.1, 0)) +
+  labs(shape = NULL,
+       # title = "Assessed credibility of the study \nin regards of preregistration and deviations",
+       x = "Tárgyalt eltérés",
+       y = "Kutatás észlelt megbízhatósága (%)",
+       color = NULL) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"))
+
+credibility_plot_fishy_hu
+
+## Trustworthiness
+trustworthiness_plot_fishy_hu <- scenarios_fishy %>% 
+  ggplot(aes(x = deviation,
+             y = tr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = tr_mean - tr_se, ymax = tr_mean + tr_se), width=.1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  # scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#DBCF7F"),
+                     labels = c("0" = "Nem preregisztrált", "1" = "Preregisztrált")) +
+  scale_x_continuous(breaks = c(0, 1),
+                     labels = c("Nincs", "Van"),
+                     expand = c(0.1, 0)) +
+  labs(shape = NULL,
+       # title = "Assessed trustworthiness of the author \nin regards of preregistration and deviations",
+       x = "Tárgyalt eltérés",
+       y = "Kutató észlelt megbízhatósága (%)",
+       color = NULL) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"))
+
+trustworthiness_plot_fishy_hu
+
+## Not fishy
+### Credibility
+credibility_plot_not_fishy_hu <- scenarios_not_fishy %>% 
+  ggplot(aes(x = deviation,
+             y = cr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = cr_mean - cr_se, ymax = cr_mean + cr_se), width = .1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  #scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#DBCF7F"),
+                     labels = c("0" = "Nem preregisztrált", "1" = "Preregisztrált")) +
+  scale_x_continuous(breaks = c(0, 1),
+                     labels = c("Nincs", "Van"),
+                     expand = c(0.1, 0)) +
+  labs(shape = NULL,
+       # title = "Assessed credibility of the study \nin regards of preregistration and deviations",
+       x = "Tárgyalt eltérés",
+       y = "Kutatás észlelt megbízhatósága (%)",
+       color = NULL) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"))
+
+credibility_plot_not_fishy_hu
+
+## Trustworthiness
+trustworthiness_plot_not_fishy_hu <- scenarios_not_fishy %>% 
+  ggplot(aes(x = deviation,
+             y = tr_mean,
+             group = prereg,
+             color = factor(prereg))) +
+  geom_path(size = 1) +
+  geom_point(aes(color = factor(prereg), size = 2)) +
+  geom_errorbar(aes(ymin = tr_mean - tr_se, ymax = tr_mean + tr_se), width=.1, size = 1) +
+  coord_cartesian(ylim = c(50, 80)) +
+  guides(size = "none") +
+  # scale_shape_manual(values = c(16, 17), labels = c("Non-preregistered", "Preregistered")) +
+  scale_color_manual(values = c("0" = "#db0078", "1" = "#DBCF7F"),
+                     labels = c("0" = "Nem preregisztrált", "1" = "Preregisztrált")) +
+  scale_x_continuous(breaks = c(0, 1),
+                     labels = c("Nincs", "Van"),
+                     expand = c(0.1, 0)) +
+  labs(shape = NULL,
+       # title = "Assessed trustworthiness of the author \nin regards of preregistration and deviations",
+       x = "Tárgyalt eltérés",
+       y = "Kutató észlelt megbízhatósága (%)",
+       color = NULL) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"))
+
+trustworthiness_plot_not_fishy_hu
+
+# Export plots
+credibility_plot_fishy_hu <- credibility_plot_fishy_hu +
+  theme(
+    # plot.title = element_text(size = 24),  # Increase font size for plot title
+    axis.title = element_text(size = 20),  # Increase font size for axis labels
+    axis.text = element_text(size = 16),
+    legend.text = element_text(size = 16)  # Increase font size for axis text
+  )
+
+credibility_plot_not_fishy_hu <- credibility_plot_not_fishy_hu +
+  theme(
+    # plot.title = element_text(size = 24),  # Increase font size for plot title
+    axis.title = element_text(size = 20),  # Increase font size for axis labels
+    axis.text = element_text(size = 16),
+    legend.text = element_text(size = 16)  # Increase font size for axis text
+  )
+
+ggsave("plots/magyar/credibility_plot_fishy_hu.png", plot = credibility_plot_fishy_hu, width = 6, height = 6, units = "in", dpi = 300)
+ggsave("plots/magyar/credibility_plot_not_fishy_hu.png", plot = credibility_plot_not_fishy_hu, width = 6, height = 6, units = "in", dpi = 300)
+
+trustworthiness_plot_fishy_hu <- trustworthiness_plot_fishy_hu +
+  theme(
+    # plot.title = element_text(size = 24),  # Increase font size for plot title
+    axis.title = element_text(size = 20),  # Increase font size for axis labels
+    axis.text = element_text(size = 16),
+    legend.text = element_text(size = 16)  # Increase font size for axis text
+  )
+
+trustworthiness_plot_not_fishy_hu <- trustworthiness_plot_not_fishy_hu +
+  theme(
+    # plot.title = element_text(size = 24),  # Increase font size for plot title
+    axis.title = element_text(size = 20),  # Increase font size for axis labels
+    axis.text = element_text(size = 16),
+    legend.text = element_text(size = 16)  # Increase font size for axis text
+  )
+
+ggsave("plots/magyar/trustworthiness_plot_fishy_hu.png", plot = trustworthiness_plot_fishy_hu, width = 6, height = 6, units = "in", dpi = 300)
+ggsave("plots/magyar/trustworthiness_plot_not_fishy_hu.png", plot = trustworthiness_plot_not_fishy_hu, width = 6, height = 6, units = "in", dpi = 300)
 ```
 
 Based on the scenario evaluations, we will have information about how people assess credibility and trustworthiness. Besides, we will also have information about the expected credibility and trustworthiness, based on Q10/2 and Q10/3 from the "Expected consequences" block of the questionnaire. By comparing these (assessed and expected) results, we will see if the assessed credibility and trustworthiness are aligned with the expected credibility and trustworthiness. To do this, we will take the expected credibility (Q10/2) results, which can take one of 3 values on a Likert scale: less, equally, or more. The participants' responses will be sorted into 3 groups according to the scale values. Within each group, we will examine how the assessed credibility results turned out: whether the participants considered the scenarios with a deviation as less, equally, or more credible than the scenarios without a deviation. This way, the expected and assessed credibility results can be compared. We will do the same analysis for the trustworthiness variable (Q10/3).
@@ -1041,6 +1481,47 @@ exp_cr_tr_plot <- exp_cr_tr %>%
 exp_cr_tr_plot
 
 ggsave("plots/expected_cr_tr.png", plot = exp_cr_tr_plot)
+
+# Hungarian plot
+exp_cr_tr$cr_tr <- factor(exp_cr_tr$cr_tr, 
+                          levels = c("Trustworthiness", "Credibility"),
+                          labels = c("Kutató megbízhatósága", "Kutatás megbízhatósága"))
+
+exp_cr_tr_plot_hu <- exp_cr_tr %>% 
+  ggplot(aes(x = response, fill = cr_tr)) +
+  geom_bar(stat = "count", position = "dodge") +
+  geom_text(aes(label = paste0(round(response_prop, 1), "%"),
+                 y = ..count..), 
+            stat = "count", 
+            vjust = -0.5,
+            position = position_dodge(width = 0.9)) +
+  labs(# title = "Expected consequences of reporting deviations from the preregistration \non the perceived credibility of one's work and own trusworthiness",
+       x = "Várt változás a kutató és a kutatás észlelt megbízhatóságában",
+       y = "Válaszok száma",
+       fill = NULL) +
+  scale_fill_manual(values = c("Kutató megbízhatósága" = "#DBCF7F", "Kutatás megbízhatósága" = "#db0078"))+
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.title.x = element_text(size = 14),  # Increase x-axis title font size
+        axis.title.y = element_text(size = 14),  # Increase y-axis title font size
+        axis.text.x = element_text(size = 12),   # Increase x-axis text font size
+        axis.text.y = element_text(size = 12),   # Increase y-axis text font size
+        strip.text = element_text(size = 14),    # Increase facet text font size
+        legend.text = element_text(size = 12),   # Increase legend text font size
+        legend.title = element_text(size = 14)   # Increase legend title font size
+        ) +
+  scale_x_discrete(labels = c("less" = "Csökkenés",
+                              "more" = "Növekedés",
+                              "the same / equally" = "Nincs változás")) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_cartesian(ylim = c(0, 620))
+
+exp_cr_tr_plot_hu
+
+ggsave("plots/magyar/expected_cr_tr.png", plot = exp_cr_tr_plot_hu, width = 10, height = 6)
 ```
 
 We will examine whether the assessed credibility of the study and the assessed trustworthiness of the author are align with each other. Data from all four scenarios will be pooled for this analysis.
@@ -1165,15 +1646,45 @@ fishy_plot <- fishy %>%
                               "I thought it was a good decision" = "I thought \nit was a good decision",
                               "I thought it was fishy" = "I thought \nit was fishy"))
 
-fishy_plot
+fishy_plot 
 
-group_by(report_reputation) %>% 
+reputation_report %>% 
+  group_by(report_reputation) %>% 
   mutate(report_reputation_n = n()) %>% 
   ungroup() %>% 
-  mutate(report_reputation_prop = report_reputation_n / n() * 100)fishy_plot
+  mutate(report_reputation_prop = report_reputation_n / n() * 100)
 
 # Export
 ggsave("plots/fishy.png", plot = fishy_plot, units = "in", dpi = 300)
+
+# Hungarian fishy plot
+fishy_plot_hu <- fishy %>% 
+  ggplot(aes(x = fishy, 
+             # fill = scenario_version
+             )) +
+  geom_bar() +
+  geom_text(aes(label = paste0(round(fishy_prop, 1), "%"),
+                 y = ..count..), 
+            stat = "count", 
+            vjust = -0.5) +
+  labs(# title = "Evaluation of the deviation from the original plan",
+       x = "Eltérés értékelése",
+       y = "Válaszok száma") +
+  # scale_fill_manual(values = c("C" = "#db0078", "D" = "#DBCF7F"),
+  #                   name = "Scenario version") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black")) +
+  scale_y_continuous(expand = c(0.0, 0)) +
+  coord_cartesian(ylim = c(0, 100)) +
+  scale_x_discrete(labels = c("I was indifferent about it" = "Közömbös voltam\naz eltérés kapcsán",
+                              "I thought it was a good decision" = "Jó döntésnek\ngondoltam",
+                              "I thought it was fishy" = "Kétes döntésnak\ngondoltam",
+                              "I didn't notice it" = "Nem vettem\nészre"))
+
+ggsave("plots/magyar/fishy_hu.png", plot = fishy_plot_hu, units = "in", dpi = 300)
 ```
 
 ## Perception of practices
@@ -1205,7 +1716,46 @@ practices_perception_plot <-
        x = "Frequency of Adopting the Practice (%)",
        y = "Number of responses")
 
+practices_perception_plot
+
 ggsave("plots/practices_perception.png", plot = practices_perception_plot)
+
+# Hungarian plots
+practices_perception <- practices_perception %>%
+  mutate(practice = recode(practice,
+                           deviation = "Eltérés",
+                           reporting = "Eltérések közlése",
+                           checking = "Eltérések ellenorzése"))
+
+practices_perception <- practices_perception %>%
+  mutate(practice = factor(practice,
+                           levels = c("Eltérés", "Eltérések közlése", "Eltérések ellenorzése")))
+
+practices_perception_plot_hu <-
+  ggplot(practices_perception, aes(x = perceived_frequency)) +
+  geom_histogram(binwidth = 10) +
+  facet_wrap(~practice, ncol = 1) +
+  labs(# title = "Perception of Others' Practices",
+       x = "A gyakorlat alkalmazásának gyakorisága (%)",
+       y = "Válaszok száma") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.title.x = element_text(size = 14),  # Increase x-axis title font size
+        axis.title.y = element_text(size = 14),  # Increase y-axis title font size
+        axis.text.x = element_text(size = 12),   # Increase x-axis text font size
+        axis.text.y = element_text(size = 12),   # Increase y-axis text font size
+        strip.text = element_text(size = 14),    # Increase facet text font size
+        legend.text = element_text(size = 12),   # Increase legend text font size
+        legend.title = element_text(size = 14)   # Increase legend title font size
+        ) +
+  scale_y_continuous(expand = c(0, 0))
+
+practices_perception_plot_hu
+
+ggsave("plots/magyar/practices_perception_hu.png", plot = practices_perception_plot_hu, width = 10, height = 6)
 ```
 
 ## Incentives and support
@@ -1240,6 +1790,11 @@ requirements_plot <-
                               "the funder of my research project." = "funder",
                               "the journal where I would like to submit my paper/I have submitted my paper." = "journal"),
                    expand = c(0.0, 0))
+
+requirements %>% 
+  group_by(requirement) %>% 
+  count() %>% 
+  View()
   
 
 # Guidance
@@ -1267,6 +1822,11 @@ guidance_plot <-
                               "the journal where I would like to submit my paper/I have submitted my paper." = "journal"),
                    expand = c(0, 0))
 
+guidance %>% 
+  group_by(guidance) %>% 
+  count() %>% 
+  View()
+
 # Norms
 norms <- incentives %>% 
   mutate(norms = factor(norms, levels = c("I agree", "I rather agree", "I rather don't agree", "I don't agree", "I don't know"))) %>% 
@@ -1287,6 +1847,10 @@ norms_plot <-
   scale_x_continuous(expand = c(0.0, 0)) +
   scale_y_discrete(expand = c(0, 0))
 
+norms %>% 
+  group_by(norms) %>% 
+  count() %>% 
+  View()
 
 # Training
 trainings <- incentives %>%
@@ -1309,14 +1873,152 @@ trainings_plot <-
   scale_x_continuous(expand = c(0.0, 0)) +
   scale_y_discrete(expand = c(0, 0))
 
+trainings %>% 
+  group_by(training) %>% 
+  count() %>% 
+  View()
+
 # Export
 ggsave("plots/requirements.png", plot = requirements_plot)
 ggsave("plots/guidance.png", plot = guidance_plot)
 ggsave("plots/norms.png", plot = norms_plot)
 ggsave("plots/trainings.png", plot = trainings_plot)
-```
+
+# Hungarian plots
+## Requirement
+requirements_plot_hu <-
+  requirements %>% 
+  ggplot(aes(y = requirement)) +
+  geom_bar() +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.title.x = element_text(size = 14),  # Increase x-axis title font size
+        axis.title.y = element_text(size = 14),  # Increase y-axis title font size
+        axis.text.x = element_text(size = 12),   # Increase x-axis text font size
+        axis.text.y = element_text(size = 12),   # Increase y-axis text font size
+        strip.text = element_text(size = 14),    # Increase facet text font size
+        legend.text = element_text(size = 12),   # Increase legend text font size
+        legend.title = element_text(size = 14)   # Increase legend title font size
+        ) +
+  scale_x_continuous(expand = c(0.0, 0)) +
+  labs(title = "Az eltérések közlése mint elvárás",
+       x = "Válaszok száma",
+       y = "Az eltérések közlését elváró szereplok") +
+  scale_y_discrete(labels = c("my PI or collaborators." = "Laborvezeto / \nkollaborátorok",
+                              "the funder of my research project." = "Támogató \nintézmény",
+                              "the journal where I would like to submit my paper/I have submitted my paper." = "Folyóirat",
+                              "none" = "Egyik sem",
+                              "else" = "Egyéb"),
+                   expand = c(0.0, 0))
+  
+
+# Guidance
+guidance_plot_hu <-
+  guidance %>% 
+  ggplot(aes(y = guidance)) +
+  geom_bar() +
+  labs(title = "Az eltérések közlésével kapcsolatos iránymutatás",
+       x = "Válaszok száma",
+       y = "Iránymutatással szolgáló szereplok") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.title.x = element_text(size = 14),  # Increase x-axis title font size
+        axis.title.y = element_text(size = 14),  # Increase y-axis title font size
+        axis.text.x = element_text(size = 12),   # Increase x-axis text font size
+        axis.text.y = element_text(size = 12),   # Increase y-axis text font size
+        strip.text = element_text(size = 14),    # Increase facet text font size
+        legend.text = element_text(size = 12),   # Increase legend text font size
+        legend.title = element_text(size = 14)   # Increase legend title font size
+        ) +
+  scale_x_continuous(expand = c(0.0, 0), limits = c(0, 425)) +
+  scale_y_discrete(labels = c("my PI or collaborators." = "Laborvezeto / \nkollaborátorok",
+                              "the funder of my research project." = "Támogató \nintézmény",
+                              "the journal where I would like to submit my paper/I have submitted my paper." = "Folyóirat",
+                              "none" = "Egyik sem",
+                              "else" = "Egyéb"),
+                   expand = c(0, 0))
+
+# Norms
+incentives <- data.frame(
+  norms = factor(c("I agree", "I rather agree", "I rather don't agree", "I don't agree", "I don't know"))
+)
+
+# Translate the values in the norms column to Hungarian
+incentives <- incentives %>%
+  mutate(norms = recode(norms,
+                        "I agree" = "Egyetértek",
+                        "I rather agree" = "Inkább egyetértek",
+                        "I rather don't agree" = "Inkább nem értek egyet",
+                        "I don't agree" = "Nem értek egyet",
+                        "I don't know" = "Nem tudom"))
+
+norms_plot_hu <-
+  norms %>% 
+  ggplot(aes(y = norms)) +
+  geom_bar() +
+  labs(title = "Az intézmény normái motivációként szolgálnak az eltérések közlésére",
+       x = "Válaszok száma",
+       y = "Egyetértés szintje") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.title.x = element_text(size = 14),  # Increase x-axis title font size
+        axis.title.y = element_text(size = 14),  # Increase y-axis title font size
+        axis.text.x = element_text(size = 12),   # Increase x-axis text font size
+        axis.text.y = element_text(size = 12),   # Increase y-axis text font size
+        strip.text = element_text(size = 14),    # Increase facet text font size
+        legend.text = element_text(size = 12),   # Increase legend text font size
+        legend.title = element_text(size = 14)   # Increase legend title font size
+        ) +
+  scale_x_continuous(expand = c(0.0, 0)) +
+  scale_y_discrete(labels = c("I agree" = "Egyetértek",
+                              "I rather agree" = "Inkább egyetértek",
+                              "I rather don't agree" = "Inkább nem értek egyet",
+                              "I don't agree" = "Nem értek egyet",
+                              "I don't know" = "Nem tudom"),
+                   expand = c(0, 0))
+# 
 
 
-```{r results = 'hide'}
+# Training
+trainings_plot_hu <-
+  trainings %>% 
+  ggplot(aes(y = training)) +
+  geom_bar() +
+  labs(title = "Preregisztrációval kapcsolatos képzés elérhetosége",
+       x = "Válaszok száma",
+       y = "Képzés elérhetosége") +
+  scale_y_discrete(labels = c("I don't know" = "Nem tudom")) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.title.x = element_text(size = 14),  # Increase x-axis title font size
+        axis.title.y = element_text(size = 14),  # Increase y-axis title font size
+        axis.text.x = element_text(size = 12),   # Increase x-axis text font size
+        axis.text.y = element_text(size = 12),   # Increase y-axis text font size
+        strip.text = element_text(size = 14),    # Increase facet text font size
+        legend.text = element_text(size = 12),   # Increase legend text font size
+        legend.title = element_text(size = 14)   # Increase legend title font size
+        ) +
+  scale_x_continuous(expand = c(0.0, 0)) +
+  scale_y_discrete(expand = c(0, 0),
+                   labels = c("Yes" = "Igen",
+                              "No" = "Nem",
+                              "I don't know" = "Nem tudom"))
 
+# Export
+ggsave("plots/magyar/requirements_hu.png", plot = requirements_plot_hu)
+ggsave("plots/magyar/guidance_hu.png", plot = guidance_plot_hu)
+ggsave("plots/magyar/norms_hu.png", plot = norms_plot_hu)
+ggsave("plots/magyar/trainings_hu.png", plot = trainings_plot_hu)
 ```
